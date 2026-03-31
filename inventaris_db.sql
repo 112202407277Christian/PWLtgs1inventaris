@@ -1,10 +1,16 @@
-CREATE DATABASE inventaris_db;
+CREATE DATABASE IF NOT EXISTS inventaris_db;
 USE inventaris_db;
 
-CREATE TABLE barang (
+CREATE TABLE IF NOT EXISTS barang (
     id INT AUTO_INCREMENT PRIMARY KEY,
     nama_barang VARCHAR(100) NOT NULL,
     jumlah INT NOT NULL,
     harga DECIMAL(10, 2) NOT NULL,
     tanggal_masuk DATE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL
 );
