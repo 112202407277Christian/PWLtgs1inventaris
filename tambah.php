@@ -1,54 +1,92 @@
 <?php
-include 'cek_login.php';
-include 'koneksi.php';
+session_start();
+require 'config.php';
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nama  = $_POST['nama_barang'];
-    $jml   = $_POST['jumlah'];
-    $harga = $_POST['harga'];
-    $tgl   = $_POST['tanggal_masuk'];
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
+    exit;
+}
 
-    $sql = "INSERT INTO barang (nama_barang, jumlah, harga, tanggal_masuk) VALUES (?, ?, ?, ?)";
-    $stmt = $pdo->prepare($sql);
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $nama = trim($_POST['nama_barang']);
+    $jumlah = trim($_POST['jumlah']);
+    $harga = trim($_POST['harga']);
+    $tanggal = $_POST['tanggal_masuk'];
+    $user_id = $_SESSION['user_id'];
     
-    if ($stmt->execute([$nama, $jml, $harga, $tgl])) {
-        header("Location: index.php");
-        exit;
+    // Validasi Input Server-Side
+    if (empty($nama) || !is_numeric($jumlah) || !is_numeric($harga) || empty($tanggal)) {
+        $error = "Semua kolom harus diisi dengan format yang benar (Jumlah dan Harga harus angka).";
+    } else {
+        // Proses Upload Gambar
+        $gambar = $_FILES['gambar']['name'];
+        $tmp = $_FILES['gambar']['tmp_name'];
+        $ext = strtolower(pathinfo($gambar, PATHINFO_EXTENSION));
+        $valid_ext = ['jpg', 'jpeg', 'png'];
+        $error_upload = $_FILES['gambar']['error'];
+        
+        // 1. Cek apakah ada error dari PHP saat upload (misal: ukuran terlalu besar)
+        if ($error_upload !== UPLOAD_ERR_OK) {
+            $error = "Gagal upload! Kode Error PHP: " . $error_upload;
+        } 
+        // 2. Cek format gambar
+        elseif (in_array($ext, $valid_ext)) {
+            $nama_gambar_baru = uniqid() . '.' . $ext;
+            // Gunakan absolute path agar PHP tidak salah alamat
+            $path_tujuan = __DIR__ . '/uploads/' . $nama_gambar_baru;
+            
+            // 3. Cek apakah file BENAR-BENAR berhasil dipindah ke folder
+            if (move_uploaded_file($tmp, $path_tujuan)) {
+                $stmt = $pdo->prepare("INSERT INTO barang (user_id, nama_barang, jumlah, harga, tanggal_masuk, gambar) VALUES (:user_id, :nama, :jumlah, :harga, :tanggal, :gambar)");
+                $stmt->execute([
+                    'user_id' => $user_id, 'nama' => $nama, 'jumlah' => $jumlah, 
+                    'harga' => $harga, 'tanggal' => $tanggal, 'gambar' => $nama_gambar_baru
+                ]);
+                header("Location: index.php");
+                exit;
+            } else {
+                $error = "Sistem gagal memindahkan gambar ke folder uploads! (Cek izin akses folder)";
+            }
+        } else {
+            $error = "Format gambar harus JPG, JPEG, atau PNG.";
+        }
     }
 }
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
     <title>Tambah Barang</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f4f7f6; }
-        .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
-        input { width: 100%; padding: 10px; margin: 10px 0 20px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { padding: 10px 15px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;}
-        a.batal { padding: 10px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; margin-left: 10px; font-size: 14px;}
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h2>Tambah Barang Baru</h2>
-        <form method="POST">
-            <label>Nama Barang:</label>
-            <input type="text" name="nama_barang" required>
-            
-            <label>Jumlah:</label>
-            <input type="number" name="jumlah" min="0" required>
-            
-            <label>Harga (Rp):</label>
-            <input type="number" name="harga" min="0" required>
-            
-            <label>Tanggal Masuk:</label>
-            <input type="date" name="tanggal_masuk" required>
-            
-            <button type="submit">Simpan Data</button>
-            <a href="index.php" class="batal">Batal</a>
-        </form>
-    </div>
+<div class="container">
+    <h2>Tambah Barang</h2>
+    <?php if(isset($error)) echo "<div class='alert'>$error</div>"; ?>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>Nama Barang</label>
+            <input type="text" name="nama_barang">
+        </div>
+        <div class="form-group">
+            <label>Jumlah</label>
+            <input type="text" name="jumlah">
+        </div>
+        <div class="form-group">
+            <label>Harga</label>
+            <input type="text" name="harga">
+        </div>
+        <div class="form-group">
+            <label>Tanggal Masuk</label>
+            <input type="date" name="tanggal_masuk">
+        </div>
+        <div class="form-group">
+            <label>Gambar Barang</label>
+            <input type="file" name="gambar" required>
+        </div>
+        <button type="submit" class="btn btn-success">Simpan</button>
+        <a href="index.php" class="btn btn-danger">Batal</a>
+    </form>
+</div>
 </body>
 </html>
