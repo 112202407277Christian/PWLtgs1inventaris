@@ -1,29 +1,54 @@
 <?php
-include 'cek_login.php';
-include 'koneksi.php';
+session_start();
+require 'config.php';
 
-if (!isset($_GET['id'])) {
-    header("Location: index.php");
+if (!isset($_SESSION['user_id'])) {
+    header("Location: login.php");
     exit;
 }
 
-$id = $_GET['id'];
-$stmt = $pdo->prepare("SELECT * FROM barang WHERE id = ?");
-$stmt->execute([$id]);
-$data = $stmt->fetch(PDO::FETCH_ASSOC);
+$id_barang = $_GET['id'] ?? 0;
+$user_id = $_SESSION['user_id'];
 
-if (!$data) die("Data tidak ditemukan!");
+// Ambil data (pastikan milik user yang sedang login)
+$stmt = $pdo->prepare("SELECT * FROM barang WHERE id_barang = :id AND user_id = :user_id");
+$stmt->execute(['id' => $id_barang, 'user_id' => $user_id]);
+$barang = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $nama  = $_POST['nama_barang'];
-    $jml   = $_POST['jumlah'];
-    $harga = $_POST['harga'];
-    $tgl   = $_POST['tanggal_masuk'];
+if (!$barang) {
+    die("Data tidak ditemukan atau Anda tidak memiliki akses.");
+}
 
-    $sql = "UPDATE barang SET nama_barang=?, jumlah=?, harga=?, tanggal_masuk=? WHERE id=?";
-    $stmt = $pdo->prepare($sql);
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $nama = trim($_POST['nama_barang']);
+    $jumlah = trim($_POST['jumlah']);
+    $harga = trim($_POST['harga']);
+    $tanggal = $_POST['tanggal_masuk'];
     
-    if ($stmt->execute([$nama, $jml, $harga, $tgl, $id])) {
+    if (empty($nama) || !is_numeric($jumlah) || !is_numeric($harga) || empty($tanggal)) {
+        $error = "Validasi gagal: Pastikan format input benar.";
+    } else {
+        $nama_gambar_baru = $barang['gambar']; // Default gambar lama
+        
+        // Cek jika ada upload gambar baru
+        if (!empty($_FILES['gambar']['name'])) {
+            $gambar = $_FILES['gambar']['name'];
+            $tmp = $_FILES['gambar']['tmp_name'];
+            $ext = strtolower(pathinfo($gambar, PATHINFO_EXTENSION));
+            if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
+                $nama_gambar_baru = uniqid() . '.' . $ext;
+                move_uploaded_file($tmp, 'uploads/' . $nama_gambar_baru);
+                // Hapus gambar lama
+                if(file_exists('uploads/' . $barang['gambar'])) unlink('uploads/' . $barang['gambar']);
+            }
+        }
+        
+        $stmt = $pdo->prepare("UPDATE barang SET nama_barang=:nama, jumlah=:jumlah, harga=:harga, tanggal_masuk=:tanggal, gambar=:gambar WHERE id_barang=:id AND user_id=:user_id");
+        $stmt->execute([
+            'nama' => $nama, 'jumlah' => $jumlah, 'harga' => $harga, 
+            'tanggal' => $tanggal, 'gambar' => $nama_gambar_baru, 
+            'id' => $id_barang, 'user_id' => $user_id
+        ]);
         header("Location: index.php");
         exit;
     }
@@ -32,35 +57,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
     <title>Edit Barang</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px; background-color: #f4f7f6; }
-        .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: auto; }
-        input { width: 100%; padding: 10px; margin: 10px 0 20px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-        button { padding: 10px 15px; background-color: #ffc107; color: #000; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; font-size: 14px;}
-        a.batal { padding: 10px 15px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px; margin-left: 10px; font-size: 14px;}
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
-        <h2>Edit Detail Barang</h2>
-        <form method="POST">
-            <label>Nama Barang:</label>
-            <input type="text" name="nama_barang" value="<?= htmlspecialchars($data['nama_barang']); ?>" required>
-            
-            <label>Jumlah:</label>
-            <input type="number" name="jumlah" value="<?= $data['jumlah']; ?>" min="0" required>
-            
-            <label>Harga (Rp):</label>
-            <input type="number" name="harga" value="<?= $data['harga']; ?>" min="0" required>
-            
-            <label>Tanggal Masuk:</label>
-            <input type="date" name="tanggal_masuk" value="<?= $data['tanggal_masuk']; ?>" required>
-            
-            <button type="submit">Update Data</button>
-            <a href="index.php" class="batal">Batal</a>
-        </form>
-    </div>
+<div class="container">
+    <h2>Edit Barang</h2>
+    <?php if(isset($error)) echo "<div class='alert'>$error</div>"; ?>
+    <form method="POST" enctype="multipart/form-data">
+        <div class="form-group">
+            <label>Nama Barang</label>
+            <input type="text" name="nama_barang" value="<?= htmlspecialchars($barang['nama_barang']) ?>">
+        </div>
+        <div class="form-group">
+            <label>Jumlah</label>
+            <input type="text" name="jumlah" value="<?= htmlspecialchars($barang['jumlah']) ?>">
+        </div>
+        <div class="form-group">
+            <label>Harga</label>
+            <input type="text" name="harga" value="<?= htmlspecialchars($barang['harga']) ?>">
+        </div>
+        <div class="form-group">
+            <label>Tanggal Masuk</label>
+            <input type="date" name="tanggal_masuk" value="<?= htmlspecialchars($barang['tanggal_masuk']) ?>">
+        </div>
+        <div class="form-group">
+            <label>Gambar Barang (Biarkan kosong jika tidak ingin mengubah)</label>
+            <input type="file" name="gambar">
+            <br><br>
+            <img src="uploads/<?= htmlspecialchars($barang['gambar']) ?>" class="thumb">
+        </div>
+        <button type="submit" class="btn btn-success">Update</button>
+        <a href="index.php" class="btn btn-danger">Batal</a>
+    </form>
+</div>
 </body>
 </html>
