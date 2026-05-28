@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Inventaris + Upload Gambar</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #f5f7fc 0%, #e9eef5 100%);
+            padding: 40px 24px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 40px; }
+        .header h1 { font-size: 2.2rem; font-weight: 700; background: linear-gradient(135deg, #1e2b6e, #2a3f8c); background-clip: text; -webkit-background-clip: text; color: transparent; }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 28px; }
+        .card {
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .card-header { padding: 20px 24px 12px 24px; border-bottom: 2px solid #eef2f9; }
+        .card-header h2 { font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        .card-body { padding: 24px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; color: #1f2a44; font-size: 0.85rem; }
+        input, select { width: 100%; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 16px; font-family: inherit; font-size: 0.9rem; }
+        input:focus { outline: none; border-color: #3b6eff; box-shadow: 0 0 0 3px rgba(59,110,255,0.2); }
+        button {
+            background: linear-gradient(95deg, #2c3e8f, #1e2f6e);
+            border: none;
+            padding: 12px 20px;
+            border-radius: 40px;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 12px;
+            transition: 0.2s;
+        }
+        button:hover { transform: scale(0.98); opacity: 0.9; }
+        .btn-read { background: linear-gradient(95deg, #1e7b4b, #0f5c38); }
+        .response {
+            background: #0a1120;
+            color: #bbd4ff;
+            font-family: monospace;
+            font-size: 0.75rem;
+            padding: 16px;
+            border-radius: 20px;
+            margin-top: 20px;
+            overflow-x: auto;
+            max-height: 260px;
+            overflow-y: auto;
+        }
+        .badge {
+            background: #eef3ff;
+            border-radius: 40px;
+            padding: 4px 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #2c3e8f;
+            display: inline-block;
+            margin-bottom: 12px;
+        }
+        footer { text-align: center; margin-top: 48px; font-size: 0.8rem; color: #6c7f9e; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>📦 API Inventaris + Upload Gambar</h1>
+        <p>Uji Create, Read, Update, Delete dengan gambar (mirip web inventaris)</p>
+    </div>
+    <div class="cards-grid">
+        <!-- READ -->
+        <div class="card">
+            <div class="card-header"><h2><span>📋</span> Read (GET)</h2></div>
+            <div class="card-body">
+                <div class="badge">api/read.php</div>
+                <button id="btnRead" class="btn-read">⟳ Ambil Semua Data</button>
+                <div class="response" id="readResponse"><pre>Klik tombol untuk melihat data</pre></div>
+            </div>
+        </div>
+
+        <!-- CREATE dengan upload gambar -->
+        <div class="card">
+            <div class="card-header"><h2><span>➕</span> Create (POST + file)</h2></div>
+            <div class="card-body">
+                <div class="badge">api/create.php (multipart/form-data)</div>
+                <div class="form-group"><label>Nama Barang</label><input type="text" id="nama" placeholder="contoh: Mouse Logitech"></div>
+                <div class="form-group"><label>Jumlah</label><input type="number" id="jumlah" placeholder="Angka"></div>
+                <div class="form-group"><label>Harga (Rp)</label><input type="number" id="harga" placeholder="250000"></div>
+                <div class="form-group"><label>Tanggal Masuk</label><input type="date" id="tanggal"></div>
+                <div class="form-group"><label>Gambar Barang</label><input type="file" id="gambarFile" accept="image/jpeg,image/png,image/jpg"></div>
+                <button id="btnCreate">✨ Tambah Barang + Upload</button>
+                <div class="response" id="createResponse"><pre>Response akan tampil di sini</pre></div>
+            </div>
+        </div>
+
+        <!-- UPDATE dengan upload gambar (opsional) -->
+        <div class="card">
+            <div class="card-header"><h2><span>✏️</span> Update (POST + file opsional)</h2></div>
+            <div class="card-body">
+                <div class="badge">api/update.php</div>
+                <div class="form-group"><label>ID Barang</label><input type="number" id="updateId" placeholder="id_barang"></div>
+                <div class="form-group"><label>Nama Barang</label><input type="text" id="updateNama" placeholder="Nama baru"></div>
+                <div class="form-group"><label>Jumlah</label><input type="number" id="updateJumlah" placeholder="Jumlah baru"></div>
+                <div class="form-group"><label>Harga</label><input type="number" id="updateHarga" placeholder="Harga baru"></div>
+                <div class="form-group"><label>Tanggal Masuk</label><input type="date" id="updateTanggal"></div>
+                <div class="form-group"><label>Gambar Baru (opsional)</label><input type="file" id="updateGambarFile" accept="image/jpeg,image/png,image/jpg"></div>
+                <button id="btnUpdate">🔄 Update Barang (ganti gambar jika ada)</button>
+                <div class="response" id="updateResponse"><pre>Response update...</pre></div>
+            </div>
+        </div>
+
+        <!-- DELETE -->
+        <div class="card">
+            <div class="card-header"><h2><span>🗑️</span> Delete (POST)</h2></div>
+            <div class="card-body">
+                <div class="badge">api/delete.php</div>
+                <div class="form-group"><label>ID Barang</label><input type="number" id="deleteId" placeholder="id_barang"></div>
+                <button id="btnDelete" style="background: linear-gradient(95deg, #9e2f2f, #761f1f);">⚠️ Hapus Barang</button>
+                <div class="response" id="deleteResponse"><pre>Response hapus...</pre></div>
+            </div>
+        </div>
+    </div>
+    <footer>⚡ Upload gambar akan disimpan di folder <strong>uploads/</strong> (server)</footer>
+</div>
+
+<script>
+    // Sesuaikan BASE_URL dengan folder proyek Anda (jika test.html berada di folder api/)
+    const BASE_URL = '';  // kosong karena file API satu folder dengan test.html
+
+    async function readData() {
+        const resDiv = document.getElementById('readResponse');
+        resDiv.innerHTML = '<pre>Loading...</pre>';
+        try {
+            const res = await fetch('read.php');
+            const json = await res.json();
+            resDiv.innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+        } catch (err) {
+            resDiv.innerHTML = `<pre>Error: ${err.message}</pre>`;
+        }
+    }
+
+    // CREATE dengan upload file (FormData)
+    document.getElementById('btnCreate').addEventListener('click', async () => {
+        const nama = document.getElementById('nama').value;
+        const jumlah = document.getElementById('jumlah').value;
+        const harga = document.getElementById('harga').value;
+        const tanggal = document.getElementById('tanggal').value;
+        const gambarFile = document.getElementById('gambarFile').files[0];
+        if (!nama || !jumlah || !harga || !tanggal) {
+            document.getElementById('createResponse').innerHTML = '<pre>⚠️ Semua field harus diisi (kecuali gambar opsional)</pre>';
+            return;
+        }
+        const formData = new FormData();
+        formData.append('nama_barang', nama);
+        formData.append('jumlah', jumlah);
+        formData.append('harga', harga);
+        formData.append('tanggal_masuk', tanggal);
+        if (gambarFile) formData.append('gambar', gambarFile);
+        else formData.append('gambar', 'default.jpg');
+
+        try {
+            const res = await fetch('create.php', { method: 'POST', body: formData });
+            const json = await res.json();
+            document.getElementById('createResponse').innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+        } catch (err) {
+            document.getElementById('createResponse').innerHTML = `<pre>Error: ${err.message}</pre>`;
+        }
+    });
+
+    // UPDATE dengan upload file opsional
+    document.getElementById('btnUpdate').addEventListener('click', async () => {
+        const id = document.getElementById('updateId').value;
+        const nama = document.getElementById('updateNama').value;
+        const jumlah = document.getElementById('updateJumlah').value;
+        const harga = document.getElementById('updateHarga').value;
+        const tanggal = document.getElementById('updateTanggal').value;
+        const gambarFile = document.getElementById('updateGambarFile').files[0];
+        if (!id || !nama || !jumlah || !harga || !tanggal) {
+            document.getElementById('updateResponse').innerHTML = '<pre>⚠️ Semua field update harus diisi (ID, nama, jumlah, harga, tanggal)</pre>';
+            return;
+        }
+        const formData = new FormData();
+        formData.append('id_barang', id);
+        formData.append('nama_barang', nama);
+        formData.append('jumlah', jumlah);
+        formData.append('harga', harga);
+        formData.append('tanggal_masuk', tanggal);
+        if (gambarFile) formData.append('gambar', gambarFile);
+        // jika tidak upload gambar, biarkan tidak ada field 'gambar' -> API akan tetap mempertahankan gambar lama
+
+        try {
+            const res = await fetch('update.php', { method: 'POST', body: formData });
+            const json = await res.json();
+            document.getElementById('updateResponse').innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+        } catch (err) {
+            document.getElementById('updateResponse').innerHTML = `<pre>Error: ${err.message}</pre>`;
+        }
+    });
+
+    // DELETE tetap sama (x-www-form-urlencoded)
+    document.getElementById('btnDelete').addEventListener('click', async () => {
+        const id = document.getElementById('deleteId').value;
+        if (!id) {
+            document.getElementById('deleteResponse').innerHTML = '<pre>⚠️ Masukkan ID barang</pre>';
+            return;
+        }
+        const formData = new URLSearchParams();
+        formData.append('id_barang', id);
+        const res = await fetch('delete.php', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: formData });
+        const json = await res.json();
+        document.getElementById('deleteResponse').innerHTML = `<pre>${JSON.stringify(json, null, 2)}</pre>`;
+    });
+
+    document.getElementById('btnRead').addEventListener('click', readData);
+    window.addEventListener('DOMContentLoaded', readData);
+</script>
+</body>
+</html>
